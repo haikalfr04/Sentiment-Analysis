@@ -4,16 +4,17 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-Transformers-orange)
 
-Binary sentiment classification (positive / negative) of IMDB movie reviews, comparing a classical
-TF-IDF baseline with fine-tuned pretrained transformers (DistilBERT, RoBERTa).
+This project classifies IMDB movie reviews as positive or negative. It compares a traditional machine learning
+model (TF-IDF with logistic regression) with pretrained language models (DistilBERT and RoBERTa) that were
+fine-tuned on the same data.
 
-**Best model: RoBERTa-base, 95.67% accuracy on the 25,000-review test set, 55% fewer errors than the TF-IDF baseline.**
+**Best result: RoBERTa-base reached 95.67% accuracy on 25,000 test reviews and made 55% fewer errors than the traditional model.**
 
-The project looks past "fine-tune BERT, report accuracy" at three questions:
+The project aims to answer three questions:
 
-1. **Is a transformer worth it?** Accuracy against parameter count, training time and inference speed, measured against a well-tuned classical baseline.
-2. **Which part of a long review matters?** 41% of reviews are longer than 256 tokens. Keeping only the beginning (*head*) is compared with keeping the beginning and the end (*head+tail*, Sun et al., 2019).
-3. **Where does the model still fail?** Analysis of its most confident mistakes.
+1. **Is a pretrained language model worth the extra cost?** The models are compared on accuracy, model size, training time and prediction speed.
+2. **Which part of a long review should the model read?** The models can only read a limited number of tokens (words and word pieces), and 41% of the reviews are longer than 256 tokens. Two methods for shortening long reviews are compared: keeping only the beginning, and keeping both the beginning and the end (Sun et al., 2019).
+3. **What kinds of reviews does the best model still get wrong?** The model's most confident mistakes are examined by hand.
 
 <!-- Add once deployed: **Demo:** <Hugging Face Spaces link> · **Model:** <Hugging Face Hub link> -->
 
@@ -21,118 +22,134 @@ The project looks past "fine-tune BERT, report accuracy" at three questions:
 
 ![Test error rate per model](results/figures/model_comparison.png)
 
-| Model | Max tokens | Truncation | Accuracy | F1 | Errors (of 25k) | Params | Train time* | Inference* (reviews/s) |
+| Model | Max tokens | Shortening method | Accuracy | F1 score | Errors (of 25,000) | Parameters | Training time* | Reviews per second* |
 |---|---|---|---|---|---|---|---|---|
-| TF-IDF + LogReg | - | - | 90.35% | 90.37% | 2,412 | 0.2M | 13 s | 6,402 |
-| DistilBERT | 256 | head | 91.55% | 91.56% | 2,113 | 67M | 45 s | 3,677 |
-| DistilBERT | 256 | head+tail | 92.97% | 92.99% | 1,758 | 67M | 44 s | 3,672 |
-| **RoBERTa-base** | **512** | **head+tail** | **95.67%** | **95.68%** | **1,082** | **125M** | **150 s** | **1,210** |
+| TF-IDF + Logistic Regression | - | - | 90.35% | 90.37% | 2,412 | 0.2M | 13 s | 6,402 |
+| DistilBERT | 256 | Beginning only | 91.55% | 91.56% | 2,113 | 67M | 45 s | 3,677 |
+| DistilBERT | 256 | Beginning + end | 92.97% | 92.99% | 1,758 | 67M | 44 s | 3,672 |
+| **RoBERTa-base** | **512** | **Beginning + end** | **95.67%** | **95.68%** | **1,082** | **125M** | **150 s** | **1,210** |
 
-<sub>*Transformers trained for 2 epochs on an NVIDIA RTX PRO 6000 (Blackwell) GPU. TF-IDF trained and evaluated on CPU, time is for one fit. Single run per configuration, seed 42.</sub>
+<sub>*DistilBERT and RoBERTa were trained for 2 epochs on an NVIDIA RTX PRO 6000 (Blackwell) GPU. The TF-IDF model was trained and tested on a CPU. Each setup was trained once, with random seed 42.</sub>
 
 ### Key findings
 
-- **Head+tail truncation is a free accuracy gain.** With the same model, token budget and training time, keeping the start *and the end* of long reviews raised DistilBERT from 91.55% to 92.97% accuracy and cut errors by 17% (2,113 → 1,758). Reviewers often state their verdict in the last few sentences, and plain truncation throws exactly that away for the 41% of reviews longer than 256 tokens.
-- **A tuned TF-IDF baseline is hard to beat.** At 90.35% it is only 1.2 points behind DistilBERT with naive truncation, while being far smaller and faster. A transformer only pays off clearly when it gets enough context.
-- **RoBERTa with 512 tokens is the clear winner.** 95.67% accuracy and 55% fewer errors than TF-IDF, at the cost of nearly 2× the parameters of DistilBERT and 3× slower inference. Its mistakes are balanced (560 false positives, 522 false negatives), so it is not biased toward either class.
-- **Many of the remaining "errors" are not model errors.** Among RoBERTa's most confident mistakes (see below), several reviews disagree with their own label or rely on sarcasm, which puts a soft ceiling on achievable accuracy.
+- **Keeping the end of long reviews improves accuracy at no extra cost.** With the same model, the same token limit and the same training time, keeping both the beginning and the end of each long review increased DistilBERT's accuracy from 91.55% to 92.97% and reduced errors by 17% (from 2,113 to 1,758). Reviewers often give their final opinion in the last sentences, and this part is lost when only the beginning is kept.
+- **The traditional model is a strong baseline.** TF-IDF with logistic regression reached 90.35% accuracy, only 1.2 percentage points below DistilBERT when DistilBERT read only the beginning of each review. It is also much smaller and faster. The pretrained models show a clear advantage only when they can read enough of each review.
+- **RoBERTa with 512 tokens performed best.** It reached 95.67% accuracy and made 55% fewer errors than the traditional model. In exchange, it has almost twice as many parameters as DistilBERT and predicts about three times more slowly. Its errors are evenly split between the two classes (560 negative reviews predicted as positive, 522 positive reviews predicted as negative), so it does not favor either class.
+- **Some of the remaining errors are caused by the data, not by the model.** Several of RoBERTa's most confident mistakes are sarcastic reviews or reviews whose text does not match their label (see the error analysis below). This limits the highest accuracy that any model can reach on this dataset.
 
-### Data: review length
+### Review length
 
 ![Review length distribution](results/figures/length_distribution.png)
 
-The median review is 222 tokens and the mean 298, with a long tail up to 3,047. 41.3% of training reviews exceed 256 tokens and
-13.4% exceed 512. Both classes have nearly identical length distributions, so length alone carries no signal. Stats: [`results/eda_stats.json`](results/eda_stats.json).
+A typical review (the median) is 222 tokens long, and the average is 298 tokens. A small number of reviews are much
+longer, up to 3,047 tokens. 41.3% of the training reviews are longer than 256 tokens, and 13.4% are longer than 512
+tokens. Positive and negative reviews have almost the same length, so length alone does not indicate the sentiment.
+The full statistics are in [`results/eda_stats.json`](results/eda_stats.json).
 
 ### Error analysis
 
-The test reviews RoBERTa got wrong with ~99.9% confidence fall into a few recognizable groups
-(full reports in [`results/errors/`](results/errors/)):
+The reviews that RoBERTa misclassified with about 99.9% confidence fall into four groups. The full lists are in
+[`results/errors/`](results/errors/).
 
-| Pattern | Example (shortened) | Label → predicted |
+| Type of review | Example (shortened) | True label → prediction |
 |---|---|---|
 | **Sarcasm** | "This has to be one of the all time greatest horror movies … its not hard to see why Band went on to make such classics as 'Killjoy 2: Deliverance From Evil'" | negative → positive |
-| **"So bad it's good"** | "it had to be one of the worst movies ever. Funny, in a real bad way." | positive → negative |
-| **Mixed review** | "Do I say how great the cinematography is … the film is boring it moves so slow, that watching paint dry would be an improvement." | positive → negative |
-| **Text contradicts the label** | "I found 'Strange Fruit' to be an excellent movie … the acting (…) is wonderful, the cinematography and direction excellent" | negative → positive |
+| **Enjoyed because it is bad** | "it had to be one of the worst movies ever. Funny, in a real bad way." | positive → negative |
+| **Mixed opinion** | "Do I say how great the cinematography is … the film is boring it moves so slow, that watching paint dry would be an improvement." | positive → negative |
+| **Text does not match the label** | "I found 'Strange Fruit' to be an excellent movie … the acting (…) is wonderful, the cinematography and direction excellent" | negative → positive |
 
-IMDB labels come from the reviewer's star rating (≤4 negative, ≥7 positive), not from the text. When the rating and the
-words disagree, the model follows the words, which is arguably the correct behavior for a sentiment classifier.
+The IMDB labels are based on the star rating that each reviewer gave (4 stars or fewer is negative, 7 stars or more is
+positive), not on the text itself. When the rating and the text disagree, the model follows the text. For a model whose
+purpose is to read the opinion in a text, this is reasonable behavior.
+
+The confusion matrices below show how many reviews of each class were classified correctly and incorrectly, for the
+traditional model (left) and for RoBERTa (right).
 
 <p align="center">
   <img src="results/figures/tfidf-logreg_confusion.png" width="45%" alt="TF-IDF confusion matrix">
   <img src="results/figures/roberta-base-512-head_tail_confusion.png" width="45%" alt="RoBERTa confusion matrix">
 </p>
 
-## Approach
+## Method
 
-**Data.** [`stanfordnlp/imdb`](https://huggingface.co/datasets/stanfordnlp/imdb) has 25k train and 25k test reviews, balanced 50/50.
-A stratified 10% of the training set (2,500 reviews) is held out for validation and model selection, so the test set is only
-used for the final numbers. `<br />` tags are stripped.
+**Data.** The [IMDB dataset](https://huggingface.co/datasets/stanfordnlp/imdb) contains 25,000 training reviews and
+25,000 test reviews, with equal numbers of positive and negative reviews. 10% of the training reviews (2,500) were set
+aside as a validation set, with the same balance of positive and negative reviews. The validation set was used to choose
+the best settings, and the test set was used only once, for the final results. HTML line breaks (`<br />`) were removed
+from the text.
 
-**Baseline.** TF-IDF on word uni- and bigrams (200k features, sublinear TF), plus logistic regression. The regularization
-strength is tuned on the validation split (best: C = 4).
+**Traditional model.** Each review is converted into word and word-pair frequencies weighted by TF-IDF (up to 200,000
+features), and a logistic regression model is trained on these features. Several regularization strengths were tested
+on the validation set, and the best one (C = 4) was used.
 
-**Transformers.** Fine-tuned with the Hugging Face `Trainer`: AdamW, learning rate 2e-5, linear schedule with
-10% warmup, 2 epochs, mixed precision. The checkpoint with the best validation F1 is kept.
+**Pretrained language models.** DistilBERT and RoBERTa were fine-tuned with the Hugging Face `Trainer` for 2 epochs,
+with a learning rate of 2e-5. The learning rate increases gradually during the first 10% of training and then decreases
+linearly. After each epoch, the model was tested on the validation set, and the version with the best F1 score was kept.
 
-**Truncation.** With *head+tail*, a review that exceeds the token budget keeps its first 25% and last 75% of
-tokens, as recommended by Sun et al. (2019). The setting is saved with the model (`inference_config.json`) so
-prediction tokenizes the same way as training.
+**Shortening long reviews.** When a review is longer than the token limit, the "beginning + end" method keeps the first
+25% and the last 75% of the allowed tokens, as recommended by Sun et al. (2019). This setting is saved together with the
+model (`inference_config.json`), so new reviews are processed in the same way during prediction as during training.
 
-## Limitations and next steps
+## Limitations and future work
 
-- The RoBERTa run changes both the model and the context length, so its gain over DistilBERT can't be split between the two. A RoBERTa 512 *head* run would isolate the truncation effect at 512 tokens.
-- Each configuration was trained once. Repeating with several seeds would give confidence intervals for the smaller gaps.
-- Explainability (e.g. SHAP or integrated gradients) would show which words drive the sarcasm and "so bad it's good" mistakes.
-- Distilling RoBERTa into DistilBERT could recover part of the accuracy at DistilBERT's speed.
+- The RoBERTa experiment uses both a different model and a higher token limit than DistilBERT, so it is not possible to tell how much of the improvement comes from each change. Training RoBERTa with 512 tokens using only the beginning of each review would answer this.
+- Each setup was trained only once. Training several times with different random seeds would show whether the smaller differences between models are reliable.
+- Explanation methods such as SHAP could show which words lead the model to its mistakes on sarcastic and mixed reviews.
+- Knowledge distillation (training a smaller model to copy a larger one) could give DistilBERT part of RoBERTa's accuracy while keeping DistilBERT's speed.
 
 ## Project structure
 
 ```
 ├── src/
-│   ├── data.py        # loading, cleaning, head/head+tail truncation, tokenization
-│   ├── eda.py         # class balance, review length distribution
-│   ├── baseline.py    # TF-IDF + Logistic Regression
-│   ├── train.py       # transformer fine-tuning (any Hugging Face model)
+│   ├── data.py        # loads and cleans the data, shortens long reviews, converts text to tokens
+│   ├── eda.py         # data exploration: class balance and review length
+│   ├── baseline.py    # traditional model: TF-IDF + logistic regression
+│   ├── train.py       # fine-tunes a pretrained language model
 │   ├── evaluate.py    # comparison table and chart, confusion matrices, error reports
-│   ├── predict.py     # inference CLI / SentimentPredictor class
-│   └── metrics.py     # shared metrics and result files
-├── app/app.py         # Gradio demo
-├── notebooks/imdb_sentiment_colab.ipynb   # runs the whole pipeline on Colab
-├── tests/             # unit tests for cleaning and truncation
-└── results/           # metrics JSON, figures, error reports
+│   ├── predict.py     # predicts the sentiment of new reviews
+│   └── metrics.py     # shared evaluation metrics and result files
+├── app/app.py         # web demo built with Gradio
+├── notebooks/imdb_sentiment_colab.ipynb   # runs the full project on Google Colab
+├── tests/             # unit tests for text cleaning and review shortening
+└── results/           # metrics, charts and error reports
 ```
 
-## Quickstart
+## How to run
 
-The easiest way is the **Open in Colab** button above: select a GPU runtime, then **Runtime → Run all**. Locally:
+The easiest way is to click the **Open in Colab** button at the top of this page, select a GPU in
+**Runtime → Change runtime type**, and then choose **Runtime → Run all**.
+
+To run the project on your own computer:
 
 ```bash
 pip install -r requirements.txt
 
-python -m src.eda                                   # data analysis
-python -m src.baseline                              # TF-IDF baseline
+python -m src.eda                                   # explore the data
+python -m src.baseline                              # train the traditional model
 python -m src.train --model_name distilbert-base-uncased --max_length 256 --truncation head
 python -m src.train --model_name distilbert-base-uncased --max_length 256 --truncation head_tail
 python -m src.train --model_name roberta-base --max_length 512 --truncation head_tail --batch_size 8 --grad_accum 2
-python -m src.evaluate                              # comparison table + error analysis
+python -m src.evaluate                              # compare models and analyze errors
 
 python -m src.predict --model_dir models/roberta-base-512-head_tail "What a fantastic film!"
 MODEL_DIR=models/roberta-base-512-head_tail python app/app.py
 ```
 
-For a quick check that everything runs, add `--max_train_samples 500 --max_eval_samples 200 --epochs 1`.
-`python -m src.train --help` lists every option, including `--report_to wandb` for experiment tracking and
-`--hub_model_id` to push the model to the Hugging Face Hub.
+In the commands, `head` means keeping only the beginning of each review, and `head_tail` means keeping the beginning
+and the end.
 
-Run the tests with `pytest`.
+To quickly check that everything works before a full run, add `--max_train_samples 500 --max_eval_samples 200 --epochs 1`
+to the training command. Run `python -m src.train --help` to see all options, including `--report_to wandb` for
+tracking experiments and `--hub_model_id` for uploading the model to the Hugging Face Hub.
 
-## Deploying the demo
+To run the unit tests, use `pytest`.
 
-1. Push the trained model to the Hub (last section of the notebook, or `--hub_model_id`).
-2. Create a Gradio Space on Hugging Face and upload `app/app.py` as `app.py`, along with the `src/` folder and `requirements.txt`.
-3. In the Space settings, set the `MODEL_DIR` variable to your Hub repo id, for example `username/imdb-sentiment-roberta`.
+## Publishing the demo
+
+1. Upload the trained model to the Hugging Face Hub (see the last section of the notebook, or use `--hub_model_id`).
+2. Create a new Gradio Space on Hugging Face. Upload `app/app.py` as `app.py`, together with the `src/` folder and `requirements.txt`.
+3. In the Space settings, set the `MODEL_DIR` variable to the name of your model on the Hub, for example `username/imdb-sentiment-roberta`.
 
 ## References
 

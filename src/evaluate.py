@@ -25,12 +25,14 @@ from src.data import LABELS
 SURFACE, SERIES, TEXT, TEXT_MUTED, GRID = "#fcfcfb", "#2a78d6", "#0b0b0b", "#52514e", "#e4e3df"
 
 MODEL_NAMES = {
-    "TF-IDF + LogisticRegression": "TF-IDF + LogReg",
+    "TF-IDF + LogisticRegression": "TF-IDF + Logistic Regression",
     "distilbert-base-uncased": "DistilBERT",
     "bert-base-uncased": "BERT-base",
     "roberta-base": "RoBERTa-base",
     "roberta-large": "RoBERTa-large",
 }
+
+TRUNCATION_NAMES = {"head": "beginning only", "head_tail": "beginning + end"}
 
 TABLE_COLUMNS = [
     ("run_name", "Run"),
@@ -65,7 +67,7 @@ def load_runs(results_dir: str) -> list[dict]:
 def display_name(run: dict) -> str:
     name = MODEL_NAMES.get(run.get("model"), run["run_name"])
     if "max_length" in run:
-        truncation = run.get("truncation", "head").replace("head_tail", "head+tail")
+        truncation = TRUNCATION_NAMES.get(run.get("truncation", "head"), run.get("truncation"))
         name += f" · {run['max_length']} tokens · {truncation}"
     return name
 
