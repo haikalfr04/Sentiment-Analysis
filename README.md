@@ -1,6 +1,6 @@
 # Movie Review Sentiment Analysis with Transformers
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/haikalfr04/Sentiment-Analysis/blob/claude/affectionate-heisenberg-tci6z1/notebooks/imdb_sentiment_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/haikalfr04/Sentiment-Analysis/blob/main/notebooks/imdb_sentiment_colab.ipynb)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-Transformers-orange)
 
