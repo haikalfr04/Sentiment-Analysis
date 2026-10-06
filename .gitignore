@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Model checkpoints are large; push them to the Hugging Face Hub instead.
+models/
+wandb/
+
+# Per-sample predictions are large; metrics, figures and reports are committed.
+results/*_predictions.csv
