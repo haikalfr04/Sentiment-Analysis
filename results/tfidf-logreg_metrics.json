@@ -1,0 +1,13 @@
+{
+  "run_name": "tfidf-logreg",
+  "accuracy": 0.90352,
+  "precision": 0.9021045918367347,
+  "recall": 0.90528,
+  "f1": 0.9036895064686152,
+  "model": "TF-IDF + LogisticRegression",
+  "best_C": 4.0,
+  "val_accuracy": 0.9036,
+  "num_parameters": 200001,
+  "train_time_sec": 12.9,
+  "inference_samples_per_sec": 6401.7
+}

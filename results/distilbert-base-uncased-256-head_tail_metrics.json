@@ -1,0 +1,17 @@
+{
+  "run_name": "distilbert-base-uncased-256-head_tail",
+  "accuracy": 0.92968,
+  "precision": 0.9266761995551319,
+  "recall": 0.9332,
+  "f1": 0.9299266581632653,
+  "model": "distilbert-base-uncased",
+  "max_length": 256,
+  "truncation": "head_tail",
+  "epochs": 2,
+  "lr": 2e-05,
+  "val_accuracy": 0.924,
+  "num_parameters": 66955010,
+  "train_time_sec": 43.7,
+  "inference_samples_per_sec": 3672.4,
+  "device": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

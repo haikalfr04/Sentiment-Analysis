@@ -1,0 +1,17 @@
+{
+  "run_name": "roberta-base-512-head_tail",
+  "accuracy": 0.95672,
+  "precision": 0.9553357792311373,
+  "recall": 0.95824,
+  "f1": 0.9567856857576483,
+  "model": "roberta-base",
+  "max_length": 512,
+  "truncation": "head_tail",
+  "epochs": 2,
+  "lr": 2e-05,
+  "val_accuracy": 0.9524,
+  "num_parameters": 124647170,
+  "train_time_sec": 150.2,
+  "inference_samples_per_sec": 1209.6,
+  "device": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

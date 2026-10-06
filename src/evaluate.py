@@ -2,6 +2,7 @@
 
 Produces:
   results/comparison.md                 - metrics table across every run
+  results/figures/model_comparison.png  - test error rate per run
   results/figures/<run>_confusion.png   - confusion matrix per run
   results/errors/<run>_errors.md        - the most confident mistakes per run
 
@@ -19,6 +20,17 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
 from src.data import LABELS
+
+# Reference chart palette: one series hue, text and grid in neutral ink.
+SURFACE, SERIES, TEXT, TEXT_MUTED, GRID = "#fcfcfb", "#2a78d6", "#0b0b0b", "#52514e", "#e4e3df"
+
+MODEL_NAMES = {
+    "TF-IDF + LogisticRegression": "TF-IDF + LogReg",
+    "distilbert-base-uncased": "DistilBERT",
+    "bert-base-uncased": "BERT-base",
+    "roberta-base": "RoBERTa-base",
+    "roberta-large": "RoBERTa-large",
+}
 
 TABLE_COLUMNS = [
     ("run_name", "Run"),
@@ -42,17 +54,54 @@ def _format(key, value):
     return str(value)
 
 
-def comparison_table(results_dir: str) -> str:
+def load_runs(results_dir: str) -> list[dict]:
     runs = []
     for path in sorted(glob.glob(os.path.join(results_dir, "*_metrics.json"))):
         with open(path) as f:
             runs.append(json.load(f))
-    runs.sort(key=lambda r: r["accuracy"])
+    return sorted(runs, key=lambda r: r["accuracy"])
 
+
+def display_name(run: dict) -> str:
+    name = MODEL_NAMES.get(run.get("model"), run["run_name"])
+    if "max_length" in run:
+        truncation = run.get("truncation", "head").replace("head_tail", "head+tail")
+        name += f" · {run['max_length']} tokens · {truncation}"
+    return name
+
+
+def comparison_table(runs: list[dict]) -> str:
     header = "| " + " | ".join(title for _, title in TABLE_COLUMNS) + " |"
     divider = "|" + "|".join("---" for _ in TABLE_COLUMNS) + "|"
     rows = ["| " + " | ".join(_format(key, run.get(key)) for key, _ in TABLE_COLUMNS) + " |" for run in runs]
     return "\n".join([header, divider, *rows])
+
+
+def plot_comparison(runs: list[dict], path: str) -> None:
+    """Horizontal bars of test error rate, best model on top."""
+    names = [display_name(r) for r in runs]
+    errors = [(1 - r["accuracy"]) * 100 for r in runs]
+
+    fig, ax = plt.subplots(figsize=(8, 0.55 * len(runs) + 1.2), facecolor=SURFACE)
+    ax.set_facecolor(SURFACE)
+    bars = ax.barh(names, errors, height=0.5, color=SERIES)
+    for bar, err in zip(bars, errors):
+        ax.text(bar.get_width() + 0.12, bar.get_y() + bar.get_height() / 2, f"{err:.2f}%",
+                va="center", color=TEXT, fontsize=10)
+
+    ax.set_xlim(0, max(errors) * 1.15)
+    ax.set_title("Test error rate on IMDB (lower is better)", loc="left", color=TEXT, fontsize=12, pad=12)
+    ax.tick_params(axis="y", length=0, labelcolor=TEXT, labelsize=10)
+    ax.tick_params(axis="x", colors=TEXT_MUTED, labelsize=9)
+    ax.xaxis.set_major_formatter(lambda x, _: f"{x:.0f}%")
+    ax.grid(axis="x", color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(GRID)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
 
 
 def plot_confusion(df: pd.DataFrame, run_name: str, path: str) -> None:
@@ -95,7 +144,8 @@ def main():
     parser.add_argument("--top_k", type=int, default=5)
     args = parser.parse_args()
 
-    table = comparison_table(args.results_dir)
+    runs = load_runs(args.results_dir)
+    table = comparison_table(runs)
     with open(os.path.join(args.results_dir, "comparison.md"), "w") as f:
         f.write(table + "\n")
     print(table)
@@ -103,6 +153,7 @@ def main():
     figures_dir = os.path.join(args.results_dir, "figures")
     errors_dir = os.path.join(args.results_dir, "errors")
     os.makedirs(figures_dir, exist_ok=True)
+    plot_comparison(runs, os.path.join(figures_dir, "model_comparison.png"))
     os.makedirs(errors_dir, exist_ok=True)
     for path in sorted(glob.glob(os.path.join(args.results_dir, "*_predictions.csv"))):
         run_name = os.path.basename(path).removesuffix("_predictions.csv")

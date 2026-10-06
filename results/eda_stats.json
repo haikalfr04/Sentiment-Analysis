@@ -1,0 +1,30 @@
+{
+  "split_sizes": {
+    "train": 22500,
+    "validation": 2500,
+    "test": 25000
+  },
+  "train_label_counts": {
+    "negative": 11250,
+    "positive": 11250
+  },
+  "tokens": {
+    "count": 22500.0,
+    "mean": 298.31728888888887,
+    "std": 222.0415504984767,
+    "min": 13.0,
+    "50%": 222.0,
+    "90%": 588.0,
+    "95%": 765.0499999999993,
+    "max": 3047.0
+  },
+  "pct_longer_than": {
+    "128": 87.9,
+    "256": 41.3,
+    "512": 13.4
+  },
+  "mean_tokens_by_sentiment": {
+    "negative": 296.0,
+    "positive": 300.7
+  }
+}
